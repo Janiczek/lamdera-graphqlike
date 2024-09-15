@@ -1,0 +1,90 @@
+module Types exposing (..)
+
+import Browser exposing (UrlRequest)
+import Browser.Navigation exposing (Key)
+import Dict exposing (Dict)
+import Lamdera exposing (ClientId)
+import Query.Error
+import Set exposing (Set)
+import Url exposing (Url)
+
+
+
+-- COMMON
+
+
+type alias QuestId =
+    String
+
+
+type alias ChoiceId =
+    String
+
+
+
+-- BACKEND
+
+
+type alias BackendModel =
+    { quests : Dict QuestId { name : String, threshold : Int }
+    , choices : Dict ChoiceId { name : String }
+    , questChoices : Dict QuestId (Set ChoiceId)
+    , choiceProgress : Dict ChoiceId (Dict ClientId Int)
+    }
+
+
+type BackendMsg
+    = NoOpBackendMsg
+
+
+
+-- FRONTEND
+
+
+type alias CompletedQuest =
+    { id : QuestId
+    , name : String
+    , threshold : Int
+    , winningChoiceId : ChoiceId
+    , winningChoiceName : String
+    , myContributionToWinningChoice : Int
+    }
+
+
+type alias OngoingQuest =
+    { id : QuestId
+    , name : String
+    , threshold : Int
+    , choices :
+        List
+            { id : ChoiceId
+            , name : String
+            , points : Int
+            , myContribution : Int
+            }
+    }
+
+
+type alias FrontendModel =
+    { key : Key
+    , message : String
+    , completedQuests : List CompletedQuest
+    , ongoingQuests : List OngoingQuest
+    }
+
+
+type FrontendMsg
+    = UrlClicked UrlRequest
+    | UrlChanged Url
+
+
+
+-- COMMUNICATION
+
+
+type ToBackend
+    = NoOpToBackend
+
+
+type ToFrontend
+    = GotCompletedQuests (Result Query.Error.Error (List CompletedQuest))
