@@ -1,7 +1,9 @@
 module Backend exposing (..)
 
 import Dict
+import Graphqlike
 import Lamdera exposing (ClientId, SessionId)
+import Queries
 import Types exposing (..)
 
 
@@ -10,11 +12,12 @@ type alias Model =
 
 
 app =
-    Lamdera.backend
+    Graphqlike.backend
         { init = init
         , update = update
         , updateFromFrontend = updateFromFrontend
         , subscriptions = \m -> Sub.none
+        , frontendSubscriptions = Queries.subscriptions
         }
 
 

@@ -2,8 +2,6 @@ module Frontend exposing (..)
 
 import Browser exposing (UrlRequest(..))
 import Browser.Navigation as Nav
-import Graphqlike
-import Graphqlike.Sub
 import Html
 import Html.Attributes as Attr
 import Lamdera
@@ -19,23 +17,15 @@ type alias Model =
 
 
 app =
-    Graphqlike.frontend
+    Lamdera.frontend
         { init = init
         , onUrlRequest = UrlClicked
         , onUrlChange = UrlChanged
         , update = update
         , updateFromBackend = updateFromBackend
         , subscriptions = \m -> Sub.none
-        , backendSubscriptions = backendSubscriptions
         , view = view
         }
-
-
-backendSubscriptions : Model -> Q.Sub
-backendSubscriptions model =
-    Graphqlike.Sub.batch
-        [ Graphqlike.Sub.query Q.completedQuests GotCompletedQuests
-        ]
 
 
 init : Url.Url -> Nav.Key -> ( Model, Cmd FrontendMsg )

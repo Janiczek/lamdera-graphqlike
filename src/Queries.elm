@@ -18,6 +18,7 @@ module Queries exposing
     , questThreshold
     , questWinningChoice
     , quests
+    , subscriptions
     )
 
 import Dict exposing (Dict)
@@ -31,7 +32,7 @@ import Types
         , ChoiceId
         , CompletedQuest
         , QuestId
-        , ToFrontend
+        , ToFrontend(..)
         )
 
 
@@ -43,6 +44,17 @@ type alias Sub =
     -- TODO perhaps keep the `msg` around, for innerMsgs etc.
     -- would need Sub.map as well
     Graphqlike.Sub.Sub BackendModel ToFrontend
+
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Sub
+subscriptions =
+    Graphqlike.Sub.batch
+        [ Graphqlike.Sub.query completedQuests GotCompletedQuests
+        ]
 
 
 
