@@ -9,7 +9,7 @@ import Url
 
 frontend :
     -- The new thing:
-    { backendSubscriptions : model -> Graphqlike.Sub.Sub backendModel msg
+    { backendSubscriptions : model -> Graphqlike.Sub.Sub backendModel toFrontendMsg
 
     -- Rest is as usual:
     , init : Url.Url -> Nav.Key -> ( model, Cmd msg )

@@ -23,8 +23,8 @@ import Types
         ( BackendModel
         , ChoiceId
         , CompletedQuest
-        , FrontendMsg
         , QuestId
+        , ToFrontend
         )
 
 
@@ -35,7 +35,7 @@ type alias Query a =
 type alias Sub =
     -- TODO perhaps keep the `msg` around, for innerMsgs etc.
     -- would need Sub.map as well
-    Graphqlike.Sub.Sub BackendModel FrontendMsg
+    Graphqlike.Sub.Sub BackendModel ToFrontend
 
 
 

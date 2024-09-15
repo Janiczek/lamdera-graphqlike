@@ -9,6 +9,7 @@ import Html.Attributes as Attr
 import Lamdera
 import Queries as Q
 import Query.Error
+import RemoteData exposing (RemoteData(..))
 import Types exposing (..)
 import Url
 
@@ -40,7 +41,8 @@ backendSubscriptions model =
 init : Url.Url -> Nav.Key -> ( Model, Cmd FrontendMsg )
 init url key =
     ( { key = key
-      , message = "Init - welcome!"
+      , completedQuests = Loading
+      , ongoingQuests = Loading
       }
     , Cmd.none
     )
@@ -69,13 +71,13 @@ updateFromBackend : ToFrontend -> Model -> ( Model, Cmd FrontendMsg )
 updateFromBackend msg model =
     case msg of
         -- TODO find a way to smuggle `never` in there, so that we can have guarantee of non-fallible queries
-        GotCompletedQuests (Err (Query.Error.NotFound { dictKey })) ->
-            ( { model | message = "Completed quests - dict key not found: " ++ dictKey }
+        GotCompletedQuests (Err err) ->
+            ( { model | completedQuests = Error err }
             , Cmd.none
             )
 
         GotCompletedQuests (Ok completedQuests) ->
-            ( { model | completedQuests = completedQuests }
+            ( { model | completedQuests = Success completedQuests }
             , Cmd.none
             )
 

@@ -5,6 +5,7 @@ import Browser.Navigation exposing (Key)
 import Dict exposing (Dict)
 import Lamdera exposing (ClientId)
 import Query.Error
+import RemoteData exposing (RemoteData)
 import Set exposing (Set)
 import Url exposing (Url)
 
@@ -67,9 +68,8 @@ type alias OngoingQuest =
 
 type alias FrontendModel =
     { key : Key
-    , message : String
-    , completedQuests : List CompletedQuest
-    , ongoingQuests : List OngoingQuest
+    , completedQuests : RemoteData (List CompletedQuest)
+    , ongoingQuests : RemoteData (List OngoingQuest)
     }
 
 
