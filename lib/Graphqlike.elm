@@ -2,6 +2,7 @@ module Graphqlike exposing (backend)
 
 import Browser
 import Browser.Navigation as Nav
+import Graphqlike.Internal as I
 import Graphqlike.Sub
 import Lamdera exposing (ClientId, SessionId)
 import Url
@@ -32,7 +33,6 @@ backend :
         , subscriptions : model -> Sub msg
         }
 backend cfg =
-    -- TODO use frontendSubscriptions
     Lamdera.backend
         { init = cfg.init
         , update =
@@ -48,9 +48,16 @@ backend cfg =
 
 
 handleFrontendSubscriptions :
-    Graphqlike.Sub.Sub model toFrontendMsg
+    I.Sub model toFrontendMsg
     -> ( model, Cmd msg )
     -> ( model, Cmd msg )
 handleFrontendSubscriptions sub ( model, cmd ) =
-    -- TODO do something
-    ( model, cmd )
+    case sub of
+        I.Query query ->
+            Debug.todo "handleFrontendSubscriptions: Query"
+
+        I.Batch [] ->
+            ( model, cmd )
+
+        I.Batch (aSub :: subs) ->
+            Debug.todo "handleFrontendSubscriptions: Batch"

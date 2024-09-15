@@ -1,24 +1,24 @@
 module Graphqlike.Sub exposing (Sub, batch, none, query)
 
+import Graphqlike.Internal as I
 import Query as Q
 import Query.Error as QE
 
 
-type Sub backendModel msg
-    = Query (Q.Query backendModel msg)
-    | Batch (List (Sub backendModel msg))
+type alias Sub backendModel msg =
+    I.Sub backendModel msg
 
 
 none : Sub bm msg
 none =
-    Batch []
+    I.Batch []
 
 
 batch : List (Sub bm msg) -> Sub bm msg
 batch list =
-    Batch list
+    I.Batch list
 
 
 query : Q.Query bm a -> (Result QE.Error a -> msg) -> Sub bm msg
 query q f =
-    Query (\cid bm -> Ok (f (q cid bm)))
+    I.Query (\cid bm -> Ok (f (q cid bm)))
