@@ -1,15 +1,22 @@
 module Queries exposing
     ( Query
     , Sub
+    , choice
+    , choiceClientPoints
+    , choiceName
+    , choiceProgress
     , choiceTotalProgress
+    , choices
     , completedQuest
     , completedQuests
     , quest
+    , questBestChoice
     , questBestChoiceProgress
     , questChoices
     , questCompleted
     , questName
     , questThreshold
+    , questWinningChoice
     , quests
     )
 
