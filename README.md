@@ -87,4 +87,4 @@ For a more involved example look at the `example-game/` directory, though for it
 - `Query`
     - a computation (roughly `BackendModel -> a`)
     - all the usual applicative/monadic combinator goodies are present
-    - can be ran with `Query.run`.
+    - can be ran with `Query.run`, although the `Graphqlike.backend` entrypoint will take care of that.
