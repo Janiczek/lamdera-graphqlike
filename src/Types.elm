@@ -28,6 +28,7 @@ type alias ChoiceId =
 
 type alias BackendModel =
     { clientIds : Set ClientId
+    , graphqlikeCache : Dict ( String, ClientId ) Int
     , quests : Dict QuestId { name : String, threshold : Int }
     , choices : Dict ChoiceId { name : String }
     , questChoices : Dict QuestId (Set ChoiceId)
@@ -38,6 +39,7 @@ type alias BackendModel =
 type BackendMsg
     = ClientConnected SessionId ClientId
     | ClientDisconnected SessionId ClientId
+    | SaveToGraphqlikeCache ( String, ClientId ) Int
 
 
 
@@ -80,6 +82,7 @@ type FrontendMsg
     | UrlChanged Url
     | InitQuestsClicked
     | AddQuestProgressClicked
+    | UnrelatedMsgClicked
 
 
 
@@ -89,6 +92,7 @@ type FrontendMsg
 type ToBackend
     = InitQuests
     | AddQuestProgress
+    | UnrelatedMsg
 
 
 type ToFrontend

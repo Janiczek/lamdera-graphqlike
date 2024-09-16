@@ -17,6 +17,7 @@ type Sub backendModel toFrontendMsg toBackendMsg backendMsg
     = Query
         { fireAfterBackendMsg : backendMsg -> Bool
         , fireAfterToBackendMsg : toBackendMsg -> Bool
+        , cacheKey : String
         }
         (Query backendModel toFrontendMsg)
     | Batch (List (Sub backendModel toFrontendMsg toBackendMsg backendMsg))

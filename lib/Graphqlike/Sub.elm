@@ -28,6 +28,7 @@ query :
     { toToFrontendMsg : Result QE.Error a -> toFrontendMsg
     , fireAfterBackendMsg : backendMsg -> Bool
     , fireAfterToBackendMsg : toBackendMsg -> Bool
+    , cacheKey : String
     }
     -> Q.Query backendModel a
     -> Sub backendModel toFrontendMsg toBackendMsg backendMsg
@@ -35,6 +36,7 @@ query cfg (I.Q info query_) =
     I.Query
         { fireAfterBackendMsg = cfg.fireAfterBackendMsg
         , fireAfterToBackendMsg = cfg.fireAfterToBackendMsg
+        , cacheKey = cfg.cacheKey
         }
         (I.Q info
             (\clientId backendModel ->

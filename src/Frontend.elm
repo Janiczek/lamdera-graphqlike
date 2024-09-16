@@ -63,6 +63,9 @@ update msg model =
         AddQuestProgressClicked ->
             ( model, Lamdera.sendToBackend AddQuestProgress )
 
+        UnrelatedMsgClicked ->
+            ( model, Lamdera.sendToBackend UnrelatedMsg )
+
 
 updateFromBackend : ToFrontend -> Model -> ( Model, Cmd FrontendMsg )
 updateFromBackend msg model =
@@ -162,6 +165,9 @@ view model =
                 , Html.Attributes.disabled (model.ongoingQuests == Success [])
                 ]
                 [ Html.text "Add quest progress" ]
+            , Html.button
+                [ Html.Events.onClick UnrelatedMsgClicked ]
+                [ Html.text "Unrelated msg" ]
             ]
         ]
     }

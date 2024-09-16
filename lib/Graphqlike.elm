@@ -2,10 +2,17 @@ module Graphqlike exposing (backend, sendSubscriptionData)
 
 import Browser
 import Browser.Navigation as Nav
+import Bytes exposing (Bytes)
+import Bytes.Encode
+import Dict exposing (Dict)
+import FNV1a
 import Graphqlike.Internal as I
 import Graphqlike.Sub
+import Hex.Convert
 import Lamdera exposing (ClientId, SessionId)
+import Lamdera.Wire3
 import Query exposing (Query)
+import Task
 import Url
 
 
@@ -23,6 +30,9 @@ type alias Config backendModel backendMsg toBackendMsg toFrontendMsg =
     { frontendSubscriptions : Graphqlike.Sub.Sub backendModel toFrontendMsg toBackendMsg backendMsg
     , lamderaBroadcast : toFrontendMsg -> Cmd backendMsg
     , lamderaSendToFrontend : ClientId -> toFrontendMsg -> Cmd backendMsg
+    , typesW3EncodeToFrontend : toFrontendMsg -> Bytes.Encode.Encoder
+    , saveToCache : ( String, ClientId ) -> Int -> backendMsg
+    , cache : backendModel -> Dict ( String, ClientId ) Int
     , clientIds : backendModel -> List ClientId
 
     -- Rest is as usual:
@@ -99,9 +109,9 @@ sendSubscriptionData :
     -> Cmd backendMsg
 sendSubscriptionData model clientId lamderaSendToFrontend sub =
     case sub of
-        I.Query _ query ->
+        I.Query { cacheKey } query ->
             --  ^ We send things unconditionally so we don't use this config
-            unconditionalQueryCmd lamderaSendToFrontend clientId query model
+            unconditionalQueryCmd cacheKey lamderaSendToFrontend clientId query model
 
         I.Batch [] ->
             Cmd.none
@@ -127,7 +137,7 @@ handleFrontendSubscriptions cfg msg sub ( model, cmd ) =
                         ( model
                         , Cmd.batch
                             [ cmd
-                            , queryCmd cfg query model
+                            , queryCmd cfg_.cacheKey cfg query model
                             ]
                         )
 
@@ -139,7 +149,7 @@ handleFrontendSubscriptions cfg msg sub ( model, cmd ) =
                         ( model
                         , Cmd.batch
                             [ cmd
-                            , queryCmd cfg query model
+                            , queryCmd cfg_.cacheKey cfg query model
                             ]
                         )
 
@@ -156,35 +166,29 @@ handleFrontendSubscriptions cfg msg sub ( model, cmd ) =
 
 
 queryCmd :
-    { config
-        | clientIds : backendModel -> List ClientId
-        , lamderaSendToFrontend : ClientId -> toFrontendMsg -> Cmd backendMsg
-        , lamderaBroadcast : toFrontendMsg -> Cmd backendMsg
-    }
-    -- Config backendModel backendMsg toBackendMsg toFrontendMsg
+    String
+    -> Config backendModel backendMsg toBackendMsg toFrontendMsg
     -> Query backendModel toFrontendMsg
     -> backendModel
     -> Cmd backendMsg
-queryCmd cfg query model =
+queryCmd cacheKey cfg query model =
     if I.usesClientId query then
-        queryCmdWithClientId cfg query model
+        queryCmdWithClientId cacheKey cfg query model
 
     else
-        queryCmdWithoutClientId cfg query model
+        queryCmdWithoutClientId cacheKey cfg query model
 
 
 {-| Go over all clientIds and run the query for each.
 TODO use CPS or something to only run the smallest clientId-sensitive part in this loop, and run the rest just once?
 -}
 queryCmdWithClientId :
-    { config
-        | clientIds : backendModel -> List ClientId
-        , lamderaSendToFrontend : ClientId -> toFrontendMsg -> Cmd backendMsg
-    }
+    String
+    -> Config backendModel backendMsg toBackendMsg toFrontendMsg
     -> Query backendModel toFrontendMsg
     -> backendModel
     -> Cmd backendMsg
-queryCmdWithClientId cfg query model =
+queryCmdWithClientId cacheKey cfg query model =
     cfg.clientIds model
         |> List.map
             (\clientId ->
@@ -195,12 +199,54 @@ queryCmdWithClientId cfg query model =
                         crash "queryCmdWithClientId - can't happen because G.Sub.query wraps stuff in Ok"
 
                     Ok toFrontendMsg ->
-                        -- TODO check if it's different from the last time we sent it
-                        -- TODO maybe via hashing?
-                        -- TODO and if it's the same, don't send it anymore!
-                        cfg.lamderaSendToFrontend clientId toFrontendMsg
+                        withCaching
+                            cfg
+                            ( cacheKey, clientId )
+                            model
+                            toFrontendMsg
+                            (\() -> cfg.lamderaSendToFrontend clientId toFrontendMsg)
             )
         |> Cmd.batch
+
+
+withCaching :
+    Config backendModel backendMsg toBackendMsg toFrontendMsg
+    -> ( String, ClientId )
+    -> backendModel
+    -> toFrontendMsg
+    -> (() -> Cmd backendMsg)
+    -> Cmd backendMsg
+withCaching cfg key model toFrontendMsg send =
+    let
+        currentHash : Int
+        currentHash =
+            toFrontendMsg
+                |> cfg.typesW3EncodeToFrontend
+                |> Lamdera.Wire3.bytesEncode
+                |> Hex.Convert.toString
+                |> FNV1a.hash
+                |> Debug.log ("current hash for " ++ Debug.toString key)
+
+        sendAndSave () =
+            Cmd.batch
+                [ send ()
+                , cfg.saveToCache key currentHash
+                    |> Task.succeed
+                    |> Task.perform identity
+                ]
+    in
+    case Debug.log ("old hash for " ++ Debug.toString key) <| Dict.get key (cfg.cache model) of
+        Nothing ->
+            -- Not in cache, send and save!
+            sendAndSave ()
+
+        Just oldHash ->
+            if oldHash == currentHash then
+                -- Skip!
+                Cmd.none
+
+            else
+                sendAndSave ()
 
 
 {-| The query doesn't use clientId, so we can put arbitrary string in there and
@@ -211,11 +257,12 @@ each. We can run it just once and broadcast!
 
 -}
 queryCmdWithoutClientId :
-    { config | lamderaBroadcast : toFrontendMsg -> Cmd backendMsg }
+    String
+    -> Config backendModel backendMsg toBackendMsg toFrontendMsg
     -> Query backendModel toFrontendMsg
     -> backendModel
     -> Cmd backendMsg
-queryCmdWithoutClientId cfg query model =
+queryCmdWithoutClientId cacheKey cfg query model =
     -- This query is guaranteed to return Ok, because of the mapping we do in G.Sub
     case Query.run "this client ID literally doesn't matter" model query of
         Err err ->
@@ -223,19 +270,22 @@ queryCmdWithoutClientId cfg query model =
             crash "queryCmdWithoutClientId - can't happen because G.Sub.query wraps stuff in Ok"
 
         Ok toFrontendMsg ->
-            -- TODO check if it's different from the last time we sent it
-            -- TODO maybe via hashing?
-            -- TODO and if it's the same, don't send it anymore!
-            cfg.lamderaBroadcast toFrontendMsg
+            withCaching
+                cfg
+                ( cacheKey, "" )
+                model
+                toFrontendMsg
+                (\() -> cfg.lamderaBroadcast toFrontendMsg)
 
 
 unconditionalQueryCmd :
-    (ClientId -> toFrontendMsg -> Cmd backendMsg)
+    String
+    -> (ClientId -> toFrontendMsg -> Cmd backendMsg)
     -> ClientId
     -> Query backendModel toFrontendMsg
     -> backendModel
     -> Cmd backendMsg
-unconditionalQueryCmd lamderaSendToFrontend clientId query model =
+unconditionalQueryCmd cacheKey lamderaSendToFrontend clientId query model =
     case Query.run clientId model query of
         Err err ->
             -- Won't happen.

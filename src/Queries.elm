@@ -61,12 +61,14 @@ subscriptions =
             { toToFrontendMsg = GotCompletedQuests
             , fireAfterBackendMsg = completedQuestsFireAfterBackendMsg
             , fireAfterToBackendMsg = completedQuestsFireAfterToBackendMsg
+            , cacheKey = "completed-quests"
             }
             completedQuests
         , Graphqlike.Sub.query
             { toToFrontendMsg = GotOngoingQuests
             , fireAfterBackendMsg = ongoingQuestsFireAfterBackendMsg
             , fireAfterToBackendMsg = ongoingQuestsFireAfterToBackendMsg
+            , cacheKey = "ongoing-quests"
             }
             ongoingQuests
         ]
@@ -81,6 +83,9 @@ completedQuestsFireAfterBackendMsg msg =
         ClientDisconnected _ _ ->
             False
 
+        SaveToGraphqlikeCache _ _ ->
+            False
+
 
 completedQuestsFireAfterToBackendMsg : ToBackend -> Bool
 completedQuestsFireAfterToBackendMsg msg =
@@ -89,6 +94,10 @@ completedQuestsFireAfterToBackendMsg msg =
             True
 
         AddQuestProgress ->
+            True
+
+        UnrelatedMsg ->
+            -- Just to demonstrate
             True
 
 
@@ -101,6 +110,9 @@ ongoingQuestsFireAfterBackendMsg msg =
         ClientDisconnected _ _ ->
             False
 
+        SaveToGraphqlikeCache _ _ ->
+            False
+
 
 ongoingQuestsFireAfterToBackendMsg : ToBackend -> Bool
 ongoingQuestsFireAfterToBackendMsg msg =
@@ -110,6 +122,9 @@ ongoingQuestsFireAfterToBackendMsg msg =
 
         AddQuestProgress ->
             True
+
+        UnrelatedMsg ->
+            False
 
 
 

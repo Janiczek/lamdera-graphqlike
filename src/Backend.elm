@@ -18,16 +18,22 @@ app =
         , update = update
         , updateFromFrontend = updateFromFrontend
         , subscriptions = subscriptions
+
+        --
         , frontendSubscriptions = Queries.subscriptions
         , lamderaBroadcast = Lamdera.broadcast
         , lamderaSendToFrontend = Lamdera.sendToFrontend
+        , typesW3EncodeToFrontend = Types.w3_encode_ToFrontend
         , clientIds = .clientIds >> Set.toList
+        , cache = .graphqlikeCache
+        , saveToCache = SaveToGraphqlikeCache
         }
 
 
 init : ( Model, Cmd BackendMsg )
 init =
-    ( { clientIds = Set.empty
+    ( { graphqlikeCache = Dict.empty
+      , clientIds = Set.empty
       , quests = Dict.empty
       , choices = Dict.empty
       , questChoices = Dict.empty
@@ -55,6 +61,15 @@ update msg model =
 
         ClientDisconnected _ clientId ->
             ( { model | clientIds = Set.remove clientId model.clientIds }
+            , Cmd.none
+            )
+
+        SaveToGraphqlikeCache key hash ->
+            ( { model
+                | graphqlikeCache =
+                    model.graphqlikeCache
+                        |> Dict.insert key hash
+              }
             , Cmd.none
             )
 
@@ -122,6 +137,9 @@ updateFromFrontend sessionId clientId msg model =
               }
             , Cmd.none
             )
+
+        UnrelatedMsg ->
+            ( model, Cmd.none )
 
 
 subscriptions : Model -> Sub BackendMsg
