@@ -1,23 +1,6 @@
 module Queries exposing
     ( DataSub
     , Query
-    , choice
-    , choiceClientPoints
-    , choiceName
-    , choicePoints
-    , choiceTotalPoints
-    , choices
-    , completedQuest
-    , completedQuests
-    , quest
-    , questBestChoice
-    , questBestChoicePoints
-    , questChoices
-    , questCompleted
-    , questName
-    , questThreshold
-    , questWinningChoice
-    , quests
     , subscriptions
     )
 
@@ -64,9 +47,10 @@ subscriptions =
 completedQuestsSub : DataSub
 completedQuestsSub =
     Graphqlike.Sub.query
-        "completed-quests"
-        GotCompletedQuests
-        completedQuests
+        { cacheKey = "completed-quests"
+        , toMsg = GotCompletedQuests
+        , query = completedQuests
+        }
         |> Graphqlike.Sub.fireOnlyAfterSpecificBackendMsgs completedQuestsFireAfterBackendMsg
         |> Graphqlike.Sub.fireOnlyAfterSpecificToBackendMsgs completedQuestsFireAfterToBackendMsg
 
@@ -74,9 +58,10 @@ completedQuestsSub =
 ongoingQuestsSub : DataSub
 ongoingQuestsSub =
     Graphqlike.Sub.query
-        "ongoing-quests"
-        GotOngoingQuests
-        ongoingQuests
+        { cacheKey = "ongoing-quests"
+        , toMsg = GotOngoingQuests
+        , query = ongoingQuests
+        }
         |> Graphqlike.Sub.fireOnlyAfterSpecificBackendMsgs ongoingQuestsFireAfterBackendMsg
         |> Graphqlike.Sub.fireOnlyAfterSpecificToBackendMsgs ongoingQuestsFireAfterToBackendMsg
 

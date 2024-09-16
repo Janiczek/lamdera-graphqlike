@@ -15,19 +15,24 @@ type alias Sub backendModel toFrontendMsg toBackendMsg backendMsg =
 
 
 query :
-    String
-    -> (Result QE.Error a -> toFrontendMsg)
-    -> Q.Query backendModel a
+    { cacheKey : String
+    , toMsg : Result QE.Error a -> toFrontendMsg
+    , query : Q.Query backendModel a
+    }
     -> Sub backendModel toFrontendMsg toBackendMsg backendMsg
-query cacheKey tagger (I.Q info query_) =
+query cfg =
+    let
+        (I.Q info query_) =
+            cfg.query
+    in
     I.QuerySub
         { fireAfterBackendMsg = \_ -> True
         , fireAfterToBackendMsg = \_ -> True
-        , cacheKey = cacheKey
+        , cacheKey = cfg.cacheKey
         }
         (I.Q info
             (\clientId backendModel ->
-                Ok (tagger (query_ clientId backendModel))
+                Ok (cfg.toMsg (query_ clientId backendModel))
             )
         )
 

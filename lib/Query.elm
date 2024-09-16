@@ -1,7 +1,7 @@
 module Query exposing
     ( Query, run
     , succeed
-    , notFound
+    , fail, notFound
     , toplevel, clientId
     , map, map2, andMap, andThen, andThen2, traverse
     , dictGet

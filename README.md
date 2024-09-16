@@ -1,6 +1,6 @@
 # lamdera-graphqlike
 
-TL;DR: Automate sending of ToFrontend messages with current data whenever that data changes.
+> TL;DR: Automate sending of ToFrontend messages with current data whenever that data changes.
 
 Queries will run after backend model changes (you can be more specific), and their results will be sent to frontend if they changed from last time.
 
@@ -16,9 +16,10 @@ subscriptions =
 leaderboardSub : DataSub
 leaderboardSub =
     Graphqlike.Sub.query
-        "leaderboard" -- Cache key. We are only sending data to frontend if it has changed from the last time
-        GotLeaderboard -- ToFrontend msg to send data with
-        leaderboard -- The query to run
+        { cacheKey = "leaderboard" -- We're only sending data if it changed from last time
+        , toMsg = GotLeaderboard
+        , query = leaderboard
+        }
         -- The following are optimizations: you can skip computing the query if you're reasonably sure a msg can't affect it
         |> Graphqlike.Sub.fireOnlyAfterSpecificBackendMsgs
             (\msg ->
@@ -63,3 +64,13 @@ The machinery all lives inside `lib/`.
 For a simple usage example look at the `src/` directory. It's a kind of a multiplayer Counter example, with an online user count and leaderboard tracked automatically. (Check out the lack of leaderboard derivation+sending in the `updateFromFrontend` `Increment` branch!)
 
 For a more involved example look at the `example-game/` directory, though for it to actually run (with `lamdera live`), you'll probably have to replace the contents of `src/` with it.
+
+## Code organization:
+
+- `Graphqlike.backend`: a replacement for `Lamdera.backend`
+- `Graphqlike.sendSubscriptionData`
+    - a way to trigger the computation of queries and sending of data to frontends manually as a Cmd
+    - handy for `ClientConnected` BackendMsg when we want to hydrate it for the first time.
+- `Graphqlike.Sub.query`: a specification of what query to run, in reaction to what Msgs, and how to send the results to the frontend
+- `Graphqlike.Sub.fireOnlyAfterSpecificBackendMsgs`, `Graphqlike.Sub.fireOnlyAfterSpecificToBackendMsgs`: a way to skip computation of a query if you're sure some Msgs can't affect it
+- `Query`: a computation (roughly `BackendModel -> a`). All the usual applicative/monadic combinator goodies are present. Can be ran with `Query.run`.

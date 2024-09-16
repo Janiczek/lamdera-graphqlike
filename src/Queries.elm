@@ -42,9 +42,10 @@ subscriptions =
 onlineUsersSub : DataSub
 onlineUsersSub =
     Graphqlike.Sub.query
-        "online-users"
-        GotOnlineUsers
-        onlineUsers
+        { cacheKey = "online-users"
+        , toMsg = GotOnlineUsers
+        , query = onlineUsers
+        }
         |> Graphqlike.Sub.fireOnlyAfterSpecificBackendMsgs
             (\msg ->
                 case msg of
@@ -68,9 +69,10 @@ onlineUsersSub =
 leaderboardSub : DataSub
 leaderboardSub =
     Graphqlike.Sub.query
-        "leaderboard"
-        GotLeaderboard
-        leaderboard
+        { cacheKey = "leaderboard"
+        , toMsg = GotLeaderboard
+        , query = leaderboard
+        }
         |> Graphqlike.Sub.fireOnlyAfterSpecificBackendMsgs
             (\msg ->
                 case msg of
