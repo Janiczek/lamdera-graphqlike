@@ -3,7 +3,8 @@ module Frontend exposing (..)
 import Browser exposing (UrlRequest(..))
 import Browser.Navigation as Nav
 import Html
-import Html.Attributes as Attr
+import Html.Attributes
+import Html.Events
 import Lamdera
 import Queries as Q
 import Query.Error
@@ -56,6 +57,12 @@ update msg model =
         UrlChanged url ->
             ( model, Cmd.none )
 
+        InitQuestsClicked ->
+            ( model, Lamdera.sendToBackend InitQuests )
+
+        AddQuestProgressClicked ->
+            ( model, Lamdera.sendToBackend AddQuestProgress )
+
 
 updateFromBackend : ToFrontend -> Model -> ( Model, Cmd FrontendMsg )
 updateFromBackend msg model =
@@ -82,8 +89,79 @@ updateFromBackend msg model =
             )
 
 
+remoteDataView : RemoteData a -> (a -> Html.Html msg) -> Html.Html msg
+remoteDataView data viewSuccess =
+    case data of
+        Loading ->
+            Html.text "Loading..."
+
+        Error err ->
+            Html.text <| "Error: " ++ Debug.toString err
+
+        Success success ->
+            viewSuccess success
+
+
 view : Model -> Browser.Document FrontendMsg
 view model =
     { title = ""
-    , body = [ Html.text <| Debug.toString model ]
+    , body =
+        [ Html.h1 [] [ Html.text "Completed quests" ]
+        , remoteDataView model.completedQuests <|
+            \completedQuests ->
+                completedQuests
+                    |> List.map
+                        (\quest ->
+                            Html.li []
+                                [ Html.text quest.name
+                                , Html.ul []
+                                    [ Html.li [] [ Html.text <| "Threshold: " ++ String.fromInt quest.threshold ]
+                                    , Html.li [] [ Html.text <| "Winning choice: " ++ quest.winningChoiceName ]
+                                    , Html.li [] [ Html.text <| "My contribution: " ++ String.fromInt quest.myContributionToWinningChoice ]
+                                    ]
+                                ]
+                        )
+                    |> Html.ul []
+        , Html.h1 [] [ Html.text "Ongoing quests" ]
+        , remoteDataView model.ongoingQuests <|
+            \ongoingQuests ->
+                ongoingQuests
+                    |> List.map
+                        (\quest ->
+                            Html.li []
+                                [ Html.text quest.name
+                                , Html.ul []
+                                    [ Html.li [] [ Html.text <| "Threshold: " ++ String.fromInt quest.threshold ]
+                                    , Html.li []
+                                        [ Html.text "Choices:"
+                                        , quest.choices
+                                            |> List.map
+                                                (\choice ->
+                                                    Html.li []
+                                                        [ Html.text choice.name
+                                                        , Html.ul []
+                                                            [ Html.li [] [ Html.text <| "Total points: " ++ String.fromInt choice.points ]
+                                                            , Html.li [] [ Html.text <| "My contribution: " ++ String.fromInt choice.myContribution ]
+                                                            ]
+                                                        ]
+                                                )
+                                            |> Html.ul []
+                                        ]
+                                    ]
+                                ]
+                        )
+                    |> Html.ul []
+        , Html.div []
+            [ Html.button
+                [ Html.Events.onClick InitQuestsClicked
+                , Html.Attributes.disabled (model.ongoingQuests /= Success [])
+                ]
+                [ Html.text "Add quests" ]
+            , Html.button
+                [ Html.Events.onClick AddQuestProgressClicked
+                , Html.Attributes.disabled (model.ongoingQuests == Success [])
+                ]
+                [ Html.text "Add quest progress" ]
+            ]
+        ]
     }

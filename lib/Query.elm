@@ -1,15 +1,18 @@
 module Query exposing
-    ( Query
-    , succeed, fail, toplevel, clientId
+    ( Query, run
+    , succeed
+    , notFound
+    , toplevel, clientId
     , map, map2, andMap, andThen, andThen2, traverse
     , dictGet
-    , run
     )
 
 {-|
 
-@docs Query
-@docs succeed, fail, toplevel, clientId
+@docs Query, run
+@docs succeed
+@docs fail, notFound
+@docs toplevel, clientId
 @docs map, map2, andMap, andThen, andThen2, traverse
 @docs dictGet
 
@@ -41,6 +44,11 @@ succeed a =
 fail : Error -> Query m a
 fail e =
     Q { usesClientId = False } <| \_ _ -> Err e
+
+
+notFound : String -> Query m a
+notFound dictKey =
+    fail (Query.Error.NotFound { dictKey = dictKey })
 
 
 map : (a -> b) -> Query m a -> Query m b

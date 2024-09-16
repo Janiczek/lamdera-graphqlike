@@ -54,8 +54,66 @@ update msg model =
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Cmd BackendMsg )
 updateFromFrontend sessionId clientId msg model =
     case msg of
-        NoOpToBackend ->
-            ( model, Cmd.none )
+        InitQuests ->
+            let
+                quests =
+                    Dict.fromList
+                        [ ( "quest1", { name = "Quest 1", threshold = 100 } )
+                        , ( "quest2", { name = "Second quest", threshold = 50 } )
+                        ]
+
+                choices =
+                    quests
+                        |> Dict.keys
+                        |> List.concatMap
+                            (\questId ->
+                                [ ( questId ++ "_choice1", { name = "Choice 1" } )
+                                , ( questId ++ "_choice2", { name = "Another choice" } )
+                                , ( questId ++ "_choice3", { name = "And the last choice" } )
+                                ]
+                            )
+                        |> Dict.fromList
+
+                questChoices =
+                    quests
+                        |> Dict.map
+                            (\questId _ ->
+                                Set.fromList
+                                    [ questId ++ "_choice1"
+                                    , questId ++ "_choice2"
+                                    , questId ++ "_choice3"
+                                    ]
+                            )
+
+                choicePoints =
+                    choices
+                        |> Dict.map (\_ _ -> Dict.empty)
+            in
+            ( { model
+                | quests = quests
+                , choices = choices
+                , questChoices = questChoices
+                , choicePoints = choicePoints
+              }
+            , Cmd.none
+            )
+
+        AddQuestProgress ->
+            ( { model
+                | choicePoints =
+                    model.choicePoints
+                        |> Dict.map
+                            (\_ dict ->
+                                dict
+                                    |> Dict.update clientId
+                                        (Maybe.withDefault 0
+                                            >> (+) 10
+                                            >> Just
+                                        )
+                            )
+              }
+            , Cmd.none
+            )
 
 
 subscriptions : Model -> Sub BackendMsg

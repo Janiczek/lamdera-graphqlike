@@ -271,6 +271,10 @@ choiceTotalPoints choiceId =
 
 choiceClientPoints : ChoiceId -> Query Int
 choiceClientPoints choiceId =
-    Query.andThen2 (\pointsDict clientId -> Query.dictGet clientId pointsDict)
+    Query.map2
+        (\pointsDict clientId ->
+            Dict.get clientId pointsDict
+                |> Maybe.withDefault 0
+        )
         (choicePoints choiceId)
         Query.clientId

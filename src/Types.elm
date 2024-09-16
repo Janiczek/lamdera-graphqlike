@@ -78,6 +78,8 @@ type alias FrontendModel =
 type FrontendMsg
     = UrlClicked UrlRequest
     | UrlChanged Url
+    | InitQuestsClicked
+    | AddQuestProgressClicked
 
 
 
@@ -85,7 +87,8 @@ type FrontendMsg
 
 
 type ToBackend
-    = NoOpToBackend
+    = InitQuests
+    | AddQuestProgress
 
 
 type ToFrontend
