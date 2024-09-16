@@ -1,7 +1,6 @@
 module Types exposing (..)
 
 import Browser exposing (UrlRequest)
-import Browser.Navigation exposing (Key)
 import Dict exposing (Dict)
 import Lamdera exposing (ClientId, SessionId)
 import Query.Error
@@ -11,28 +10,13 @@ import Url exposing (Url)
 
 
 
--- COMMON
-
-
-type alias QuestId =
-    String
-
-
-type alias ChoiceId =
-    String
-
-
-
 -- BACKEND
 
 
 type alias BackendModel =
     { clientIds : Set ClientId
     , graphqlikeCache : Dict ( String, ClientId ) Int
-    , quests : Dict QuestId { name : String, threshold : Int }
-    , choices : Dict ChoiceId { name : String }
-    , questChoices : Dict QuestId (Set ChoiceId)
-    , choicePoints : Dict ChoiceId (Dict ClientId Int)
+    , counts : Dict ClientId Int
     }
 
 
@@ -46,43 +30,17 @@ type BackendMsg
 -- FRONTEND
 
 
-type alias CompletedQuest =
-    { id : QuestId
-    , name : String
-    , threshold : Int
-    , winningChoiceId : ChoiceId
-    , winningChoiceName : String
-    , myContributionToWinningChoice : Int
-    }
-
-
-type alias OngoingQuest =
-    { id : QuestId
-    , name : String
-    , threshold : Int
-    , choices :
-        List
-            { id : ChoiceId
-            , name : String
-            , points : Int
-            , myContribution : Int
-            }
-    }
-
-
 type alias FrontendModel =
-    { key : Key
-    , completedQuests : RemoteData (List CompletedQuest)
-    , ongoingQuests : RemoteData (List OngoingQuest)
+    { myClientId : String
+    , onlineUsers : Int
+    , leaderboard : List ( ClientId, Int )
+    , myCount : Int
     }
 
 
 type FrontendMsg
-    = UrlClicked UrlRequest
-    | UrlChanged Url
-    | InitQuestsClicked
-    | AddQuestProgressClicked
-    | UnrelatedMsgClicked
+    = DontCareAboutBrowserNav
+    | IncrementClicked
 
 
 
@@ -90,11 +48,11 @@ type FrontendMsg
 
 
 type ToBackend
-    = InitQuests
-    | AddQuestProgress
-    | UnrelatedMsg
+    = Increment
 
 
 type ToFrontend
-    = GotCompletedQuests (Result Query.Error.Error (List CompletedQuest))
-    | GotOngoingQuests (Result Query.Error.Error (List OngoingQuest))
+    = HelloYouAre ClientId
+    | GotOnlineUsers (Result Query.Error.Error Int)
+    | GotLeaderboard (Result Query.Error.Error (List ( ClientId, Int )))
+    | IncrementAck Int

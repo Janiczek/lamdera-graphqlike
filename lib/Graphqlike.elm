@@ -27,7 +27,7 @@ import Url
 
 type alias Config backendModel backendMsg toBackendMsg toFrontendMsg =
     -- The new thing:
-    { frontendSubscriptions : Graphqlike.Sub.Sub backendModel toFrontendMsg toBackendMsg backendMsg
+    { frontendSubscriptions : List (Graphqlike.Sub.Sub backendModel toFrontendMsg toBackendMsg backendMsg)
     , lamderaBroadcast : toFrontendMsg -> Cmd backendMsg
     , lamderaSendToFrontend : ClientId -> toFrontendMsg -> Cmd backendMsg
     , typesW3EncodeToFrontend : toFrontendMsg -> Bytes.Encode.Encoder
@@ -75,8 +75,12 @@ update cfg msg model =
         ( newModel, cmd ) =
             cfg.update msg model
     in
-    ( newModel, cmd )
-        |> handleFrontendSubscriptions cfg (BackendMsg msg) cfg.frontendSubscriptions
+    ( newModel
+    , Cmd.batch
+        [ cmd
+        , sendSubscriptionDataIfChanged cfg (BackendMsg msg) cfg.frontendSubscriptions newModel
+        ]
+    )
 
 
 updateFromFrontend :
@@ -91,10 +95,14 @@ updateFromFrontend cfg sessionId clientId msg model =
         ( newModel, cmd ) =
             cfg.updateFromFrontend sessionId clientId msg model
     in
-    ( newModel, cmd )
-        -- TODO figure out which parts are clientId-specific and only run _those_ in a client-iterating loop
-        -- TODO for the rest, it can be done once and reused for every client
-        |> handleFrontendSubscriptions cfg (ToBackendMsg msg) cfg.frontendSubscriptions
+    ( newModel
+    , Cmd.batch
+        [ cmd
+        , -- TODO figure out which parts are clientId-specific and only run _those_ in a client-iterating loop
+          -- TODO for the rest, it can be done once and reused for every client
+          sendSubscriptionDataIfChanged cfg (ToBackendMsg msg) cfg.frontendSubscriptions newModel
+        ]
+    )
 
 
 {-| This is helpful eg. when first hydrating clients on ClientConnected, as it
@@ -105,64 +113,43 @@ sendSubscriptionData :
     backendModel
     -> ClientId
     -> (ClientId -> toFrontendMsg -> Cmd backendMsg)
-    -> Graphqlike.Sub.Sub backendModel toFrontendMsg toBackendMsg backendMsg
+    -> List (Graphqlike.Sub.Sub backendModel toFrontendMsg toBackendMsg backendMsg)
     -> Cmd backendMsg
-sendSubscriptionData model clientId lamderaSendToFrontend sub =
-    case sub of
-        I.Query { cacheKey } query ->
-            --  ^ We send things unconditionally so we don't use this config
-            unconditionalQueryCmd cacheKey lamderaSendToFrontend clientId query model
-
-        I.Batch [] ->
-            Cmd.none
-
-        I.Batch subs ->
-            subs
-                |> List.map (sendSubscriptionData model clientId lamderaSendToFrontend)
-                |> Cmd.batch
+sendSubscriptionData model clientId lamderaSendToFrontend subs =
+    subs
+        |> List.map
+            (\(I.QuerySub { cacheKey } query) ->
+                unconditionalQueryCmd cacheKey lamderaSendToFrontend clientId query model
+            )
+        |> Cmd.batch
 
 
-handleFrontendSubscriptions :
+sendSubscriptionDataIfChanged :
     Config backendModel backendMsg toBackendMsg toFrontendMsg
     -> BackendBoundMsg backendMsg toBackendMsg
-    -> Graphqlike.Sub.Sub backendModel toFrontendMsg toBackendMsg backendMsg
-    -> ( backendModel, Cmd backendMsg )
-    -> ( backendModel, Cmd backendMsg )
-handleFrontendSubscriptions cfg msg sub ( model, cmd ) =
-    case sub of
-        I.Query cfg_ query ->
-            case msg of
-                BackendMsg backendMsg ->
-                    if cfg_.fireAfterBackendMsg backendMsg then
-                        ( model
-                        , Cmd.batch
-                            [ cmd
-                            , queryCmd cfg_.cacheKey cfg query model
-                            ]
-                        )
+    -> List (Graphqlike.Sub.Sub backendModel toFrontendMsg toBackendMsg backendMsg)
+    -> backendModel
+    -> Cmd backendMsg
+sendSubscriptionDataIfChanged cfg msg subs model =
+    subs
+        |> List.map
+            (\(I.QuerySub cfg_ query) ->
+                case msg of
+                    BackendMsg backendMsg ->
+                        if cfg_.fireAfterBackendMsg backendMsg then
+                            queryCmd cfg_.cacheKey cfg query model
 
-                    else
-                        ( model, cmd )
+                        else
+                            Cmd.none
 
-                ToBackendMsg toBackendMsg ->
-                    if cfg_.fireAfterToBackendMsg toBackendMsg then
-                        ( model
-                        , Cmd.batch
-                            [ cmd
-                            , queryCmd cfg_.cacheKey cfg query model
-                            ]
-                        )
+                    ToBackendMsg toBackendMsg ->
+                        if cfg_.fireAfterToBackendMsg toBackendMsg then
+                            queryCmd cfg_.cacheKey cfg query model
 
-                    else
-                        ( model, cmd )
-
-        I.Batch [] ->
-            ( model, cmd )
-
-        I.Batch (aSub :: subs) ->
-            ( model, cmd )
-                |> handleFrontendSubscriptions cfg msg aSub
-                |> handleFrontendSubscriptions cfg msg (I.Batch subs)
+                        else
+                            Cmd.none
+            )
+        |> Cmd.batch
 
 
 queryCmd :

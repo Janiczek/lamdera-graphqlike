@@ -14,12 +14,13 @@ type alias Model =
 
 app =
     Graphqlike.backend
+        -- The following are just like in Lamdera.backend:
         { init = init
         , update = update
         , updateFromFrontend = updateFromFrontend
         , subscriptions = subscriptions
 
-        --
+        -- Here's the new stuff.
         , frontendSubscriptions = Queries.subscriptions
         , lamderaBroadcast = Lamdera.broadcast
         , lamderaSendToFrontend = Lamdera.sendToFrontend
@@ -34,10 +35,7 @@ init : ( Model, Cmd BackendMsg )
 init =
     ( { graphqlikeCache = Dict.empty
       , clientIds = Set.empty
-      , quests = Dict.empty
-      , choices = Dict.empty
-      , questChoices = Dict.empty
-      , choicePoints = Dict.empty
+      , counts = Dict.empty
       }
     , Cmd.none
     )
@@ -52,11 +50,14 @@ update msg model =
                     { model | clientIds = Set.insert clientId model.clientIds }
             in
             ( newModel
-            , Graphqlike.sendSubscriptionData
-                newModel
-                clientId
-                Lamdera.sendToFrontend
-                Queries.subscriptions
+            , Cmd.batch
+                [ Graphqlike.sendSubscriptionData
+                    newModel
+                    clientId
+                    Lamdera.sendToFrontend
+                    Queries.subscriptions
+                , Lamdera.sendToFrontend clientId (HelloYouAre clientId)
+                ]
             )
 
         ClientDisconnected _ clientId ->
@@ -77,69 +78,23 @@ update msg model =
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Cmd BackendMsg )
 updateFromFrontend sessionId clientId msg model =
     case msg of
-        InitQuests ->
+        Increment ->
             let
-                quests =
-                    Dict.fromList
-                        [ ( "quest1", { name = "Quest 1", threshold = 100 } )
-                        , ( "quest2", { name = "Second quest", threshold = 50 } )
-                        ]
-
-                choices =
-                    quests
-                        |> Dict.keys
-                        |> List.concatMap
-                            (\questId ->
-                                [ ( questId ++ "_choice1", { name = "Choice 1" } )
-                                , ( questId ++ "_choice2", { name = "Another choice" } )
-                                , ( questId ++ "_choice3", { name = "And the last choice" } )
-                                ]
-                            )
-                        |> Dict.fromList
-
-                questChoices =
-                    quests
-                        |> Dict.map
-                            (\questId _ ->
-                                Set.fromList
-                                    [ questId ++ "_choice1"
-                                    , questId ++ "_choice2"
-                                    , questId ++ "_choice3"
-                                    ]
-                            )
-
-                choicePoints =
-                    choices
-                        |> Dict.map (\_ _ -> Dict.empty)
+                newCount =
+                    model.counts
+                        |> Dict.get clientId
+                        |> Maybe.withDefault 0
+                        |> (+) 1
             in
             ( { model
-                | quests = quests
-                , choices = choices
-                , questChoices = questChoices
-                , choicePoints = choicePoints
+                | counts =
+                    model.counts
+                        |> Dict.insert clientId newCount
               }
-            , Cmd.none
+            , -- Look, no derivation of leaderboard here, but it will still get sent if changed!
+              -- We can still do normal Lamdera BE<->FE communication as well: let's send the user their new score.
+              Lamdera.sendToFrontend clientId (IncrementAck newCount)
             )
-
-        AddQuestProgress ->
-            ( { model
-                | choicePoints =
-                    model.choicePoints
-                        |> Dict.map
-                            (\_ dict ->
-                                dict
-                                    |> Dict.update clientId
-                                        (Maybe.withDefault 0
-                                            >> (+) 10
-                                            >> Just
-                                        )
-                            )
-              }
-            , Cmd.none
-            )
-
-        UnrelatedMsg ->
-            ( model, Cmd.none )
 
 
 subscriptions : Model -> Sub BackendMsg

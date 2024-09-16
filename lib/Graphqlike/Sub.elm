@@ -1,7 +1,7 @@
 module Graphqlike.Sub exposing
     ( Sub
-    , batch
-    , none
+    , fireOnlyAfterSpecificBackendMsgs
+    , fireOnlyAfterSpecificToBackendMsgs
     , query
     )
 
@@ -14,32 +14,35 @@ type alias Sub backendModel toFrontendMsg toBackendMsg backendMsg =
     I.Sub backendModel toFrontendMsg toBackendMsg backendMsg
 
 
-none : Sub backendModel toFrontendMsg toBackendMsg backendMsg
-none =
-    I.Batch []
-
-
-batch : List (Sub backendModel toFrontendMsg toBackendMsg backendMsg) -> Sub backendModel toFrontendMsg toBackendMsg backendMsg
-batch list =
-    I.Batch list
-
-
 query :
-    { toToFrontendMsg : Result QE.Error a -> toFrontendMsg
-    , fireAfterBackendMsg : backendMsg -> Bool
-    , fireAfterToBackendMsg : toBackendMsg -> Bool
-    , cacheKey : String
-    }
+    String
+    -> (Result QE.Error a -> toFrontendMsg)
     -> Q.Query backendModel a
     -> Sub backendModel toFrontendMsg toBackendMsg backendMsg
-query cfg (I.Q info query_) =
-    I.Query
-        { fireAfterBackendMsg = cfg.fireAfterBackendMsg
-        , fireAfterToBackendMsg = cfg.fireAfterToBackendMsg
-        , cacheKey = cfg.cacheKey
+query cacheKey tagger (I.Q info query_) =
+    I.QuerySub
+        { fireAfterBackendMsg = \_ -> True
+        , fireAfterToBackendMsg = \_ -> True
+        , cacheKey = cacheKey
         }
         (I.Q info
             (\clientId backendModel ->
-                Ok (cfg.toToFrontendMsg (query_ clientId backendModel))
+                Ok (tagger (query_ clientId backendModel))
             )
         )
+
+
+fireOnlyAfterSpecificBackendMsgs :
+    (backendMsg -> Bool)
+    -> Sub backendModel toFrontendMsg toBackendMsg backendMsg
+    -> Sub backendModel toFrontendMsg toBackendMsg backendMsg
+fireOnlyAfterSpecificBackendMsgs pred (I.QuerySub cfg q) =
+    I.QuerySub { cfg | fireAfterBackendMsg = pred } q
+
+
+fireOnlyAfterSpecificToBackendMsgs :
+    (toBackendMsg -> Bool)
+    -> Sub backendModel toFrontendMsg toBackendMsg backendMsg
+    -> Sub backendModel toFrontendMsg toBackendMsg backendMsg
+fireOnlyAfterSpecificToBackendMsgs pred (I.QuerySub cfg q) =
+    I.QuerySub { cfg | fireAfterToBackendMsg = pred } q
