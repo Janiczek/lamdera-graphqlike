@@ -110,16 +110,16 @@ will send the ToFrontend msgs unconditionally. The user is expected to wire
 this through manually.
 -}
 sendSubscriptionData :
-    backendModel
+    Config backendModel backendMsg toBackendMsg toFrontendMsg
+    -> backendModel
     -> ClientId
-    -> (ClientId -> toFrontendMsg -> Cmd backendMsg)
     -> List (Graphqlike.Sub.Sub backendModel toFrontendMsg toBackendMsg backendMsg)
     -> Cmd backendMsg
-sendSubscriptionData model clientId lamderaSendToFrontend subs =
+sendSubscriptionData cfg model clientId subs =
     subs
         |> List.map
             (\(I.QuerySub { cacheKey } query) ->
-                unconditionalQueryCmd cacheKey lamderaSendToFrontend clientId query model
+                unconditionalQueryCmd cfg cacheKey clientId query model
             )
         |> Cmd.batch
 
@@ -265,21 +265,25 @@ queryCmdWithoutClientId cacheKey cfg query model =
 
 
 unconditionalQueryCmd :
-    String
-    -> (ClientId -> toFrontendMsg -> Cmd backendMsg)
+    Config backendModel backendMsg toBackendMsg toFrontendMsg
+    -> String
     -> ClientId
     -> Query backendModel toFrontendMsg
     -> backendModel
     -> Cmd backendMsg
-unconditionalQueryCmd cacheKey lamderaSendToFrontend clientId query model =
+unconditionalQueryCmd cfg cacheKey clientId query model =
     case Query.run clientId model query of
         Err err ->
             -- Won't happen.
             crash "unconditionalQueryCmd - can't happen because G.Sub.query wraps stuff in Ok"
 
         Ok toFrontendMsg ->
-            -- No checking against last-sent version because this is the first one!
-            lamderaSendToFrontend clientId toFrontendMsg
+            withCaching
+                cfg
+                ( cacheKey, clientId )
+                model
+                toFrontendMsg
+                (\() -> cfg.lamderaSendToFrontend clientId toFrontendMsg)
 
 
 crash : String -> a

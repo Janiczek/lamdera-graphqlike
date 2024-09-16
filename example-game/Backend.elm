@@ -12,22 +12,25 @@ type alias Model =
     BackendModel
 
 
-app =
-    Graphqlike.backend
-        { init = init
-        , update = update
-        , updateFromFrontend = updateFromFrontend
-        , subscriptions = subscriptions
+config =
+    { init = init
+    , update = update
+    , updateFromFrontend = updateFromFrontend
+    , subscriptions = subscriptions
 
-        --
-        , frontendSubscriptions = Queries.subscriptions
-        , lamderaBroadcast = Lamdera.broadcast
-        , lamderaSendToFrontend = Lamdera.sendToFrontend
-        , typesW3EncodeToFrontend = Types.w3_encode_ToFrontend
-        , clientIds = .clientIds >> Set.toList
-        , cache = .graphqlikeCache
-        , saveToCache = SaveToGraphqlikeCache
-        }
+    --
+    , frontendSubscriptions = Queries.subscriptions
+    , lamderaBroadcast = Lamdera.broadcast
+    , lamderaSendToFrontend = Lamdera.sendToFrontend
+    , typesW3EncodeToFrontend = Types.w3_encode_ToFrontend
+    , clientIds = .clientIds >> Set.toList
+    , cache = .graphqlikeCache
+    , saveToCache = SaveToGraphqlikeCache
+    }
+
+
+app =
+    Graphqlike.backend config
 
 
 init : ( Model, Cmd BackendMsg )
@@ -53,9 +56,9 @@ update msg model =
             in
             ( newModel
             , Graphqlike.sendSubscriptionData
+                config
                 newModel
                 clientId
-                Lamdera.sendToFrontend
                 Queries.subscriptions
             )
 
