@@ -9,7 +9,7 @@ Queries will run after backend model changes (you can be more specific), and the
 app =
     Graphqlike.backend
         { ...
-        , dataSubscriptions = Queries.dataSubscriptions
+        , dataSubscriptions = dataSubscriptions
         }
 
 -- You specify what data the frontend wants to know about:
