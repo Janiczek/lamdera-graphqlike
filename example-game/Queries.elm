@@ -1,7 +1,7 @@
 module Queries exposing
     ( DataSub
     , Query
-    , subscriptions
+    , dataSubscriptions
     )
 
 import Dict exposing (Dict)
@@ -37,8 +37,8 @@ type alias DataSub =
 -- SUBSCRIPTIONS
 
 
-subscriptions : List DataSub
-subscriptions =
+dataSubscriptions : List DataSub
+dataSubscriptions =
     [ completedQuestsSub
     , ongoingQuestsSub
     ]

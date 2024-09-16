@@ -5,9 +5,16 @@
 Queries will run after backend model changes (you can be more specific), and their results will be sent to frontend if they changed from last time.
 
 ```elm
+-- You use our specific `main`
+app =
+    Graphqlike.backend
+        { ...
+        , dataSubscriptions = Queries.dataSubscriptions
+        }
+
 -- You specify what data the frontend wants to know about:
-subscriptions : List DataSub
-subscriptions =
+dataSubscriptions : List DataSub
+dataSubscriptions =
     [ userCountSub
     , leaderboardSub
     ]
@@ -65,12 +72,19 @@ For a simple usage example look at the `src/` directory. It's a kind of a multip
 
 For a more involved example look at the `example-game/` directory, though for it to actually run (with `lamdera live`), you'll probably have to replace the contents of `src/` with it.
 
-## Code organization:
+## API Overview::
 
-- `Graphqlike.backend`: a replacement for `Lamdera.backend`
+- `Graphqlike.backend`
+    - a replacement for `Lamdera.backend`
 - `Graphqlike.sendSubscriptionData`
     - a way to trigger the computation of queries and sending of data to frontends manually as a Cmd
     - handy for `ClientConnected` BackendMsg when we want to hydrate it for the first time.
-- `Graphqlike.Sub.query`: a specification of what query to run, in reaction to what Msgs, and how to send the results to the frontend
-- `Graphqlike.Sub.fireOnlyAfterSpecificBackendMsgs`, `Graphqlike.Sub.fireOnlyAfterSpecificToBackendMsgs`: a way to skip computation of a query if you're sure some Msgs can't affect it
-- `Query`: a computation (roughly `BackendModel -> a`). All the usual applicative/monadic combinator goodies are present. Can be ran with `Query.run`.
+- `Graphqlike.Sub.query`
+    - a specification of what query to run, in reaction to what Msgs, and how to send the results to the frontend
+- `Graphqlike.Sub.fireOnlyAfterSpecificBackendMsgs`
+- `Graphqlike.Sub.fireOnlyAfterSpecificToBackendMsgs`
+    - a way to skip computation of a query if you're sure some Msgs can't affect it
+- `Query`
+    - a computation (roughly `BackendModel -> a`)
+    - all the usual applicative/monadic combinator goodies are present
+    - can be ran with `Query.run`.

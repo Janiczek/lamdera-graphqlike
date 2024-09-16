@@ -19,7 +19,7 @@ config =
     , subscriptions = subscriptions
 
     --
-    , frontendSubscriptions = Queries.subscriptions
+    , dataSubscriptions = Queries.dataSubscriptions
     , lamderaBroadcast = Lamdera.broadcast
     , lamderaSendToFrontend = Lamdera.sendToFrontend
     , typesW3EncodeToFrontend = Types.w3_encode_ToFrontend
@@ -59,7 +59,7 @@ update msg model =
                 config
                 newModel
                 clientId
-                Queries.subscriptions
+                Queries.dataSubscriptions
             )
 
         ClientDisconnected _ clientId ->

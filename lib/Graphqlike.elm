@@ -27,7 +27,7 @@ import Url
 
 type alias Config backendModel backendMsg toBackendMsg toFrontendMsg =
     -- The new thing:
-    { frontendSubscriptions : List (Graphqlike.Sub.Sub backendModel toFrontendMsg toBackendMsg backendMsg)
+    { dataSubscriptions : List (Graphqlike.Sub.Sub backendModel toFrontendMsg toBackendMsg backendMsg)
     , lamderaBroadcast : toFrontendMsg -> Cmd backendMsg
     , lamderaSendToFrontend : ClientId -> toFrontendMsg -> Cmd backendMsg
     , typesW3EncodeToFrontend : toFrontendMsg -> Bytes.Encode.Encoder
@@ -78,7 +78,7 @@ update cfg msg model =
     ( newModel
     , Cmd.batch
         [ cmd
-        , sendSubscriptionDataIfChanged cfg (BackendMsg msg) cfg.frontendSubscriptions newModel
+        , sendSubscriptionDataIfChanged cfg (BackendMsg msg) cfg.dataSubscriptions newModel
         ]
     )
 
@@ -100,7 +100,7 @@ updateFromFrontend cfg sessionId clientId msg model =
         [ cmd
         , -- TODO figure out which parts are clientId-specific and only run _those_ in a client-iterating loop
           -- TODO for the rest, it can be done once and reused for every client
-          sendSubscriptionDataIfChanged cfg (ToBackendMsg msg) cfg.frontendSubscriptions newModel
+          sendSubscriptionDataIfChanged cfg (ToBackendMsg msg) cfg.dataSubscriptions newModel
         ]
     )
 

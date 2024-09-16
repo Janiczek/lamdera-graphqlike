@@ -20,7 +20,7 @@ config =
     , subscriptions = subscriptions
 
     -- Here's the new stuff.
-    , frontendSubscriptions = Queries.subscriptions
+    , dataSubscriptions = Queries.dataSubscriptions
     , lamderaBroadcast = Lamdera.broadcast
     , lamderaSendToFrontend = Lamdera.sendToFrontend
     , typesW3EncodeToFrontend = Types.w3_encode_ToFrontend
@@ -58,7 +58,7 @@ update msg model =
                     config
                     newModel
                     clientId
-                    Queries.subscriptions
+                    Queries.dataSubscriptions
                 , Lamdera.sendToFrontend clientId (HelloYouAre clientId)
                 ]
             )
