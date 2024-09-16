@@ -22,6 +22,7 @@ module Queries exposing
     )
 
 import Dict exposing (Dict)
+import Graphqlike
 import Graphqlike.Sub
 import Lamdera exposing (ClientId)
 import Query
@@ -29,10 +30,12 @@ import Set exposing (Set)
 import Types
     exposing
         ( BackendModel
+        , BackendMsg(..)
         , ChoiceId
         , CompletedQuest
         , OngoingQuest
         , QuestId
+        , ToBackend(..)
         , ToFrontend(..)
         )
 
@@ -44,7 +47,7 @@ type alias Query a =
 type alias Sub =
     -- TODO perhaps keep the `msg` around, for innerMsgs etc.
     -- would need Sub.map as well
-    Graphqlike.Sub.Sub BackendModel ToFrontend
+    Graphqlike.Sub.Sub BackendModel ToFrontend ToBackend BackendMsg
 
 
 
@@ -54,9 +57,59 @@ type alias Sub =
 subscriptions : Sub
 subscriptions =
     Graphqlike.Sub.batch
-        [ Graphqlike.Sub.query completedQuests GotCompletedQuests
-        , Graphqlike.Sub.query ongoingQuests GotOngoingQuests
+        [ Graphqlike.Sub.query
+            { toToFrontendMsg = GotCompletedQuests
+            , fireAfterBackendMsg = completedQuestsFireAfterBackendMsg
+            , fireAfterToBackendMsg = completedQuestsFireAfterToBackendMsg
+            }
+            completedQuests
+        , Graphqlike.Sub.query
+            { toToFrontendMsg = GotOngoingQuests
+            , fireAfterBackendMsg = ongoingQuestsFireAfterBackendMsg
+            , fireAfterToBackendMsg = ongoingQuestsFireAfterToBackendMsg
+            }
+            ongoingQuests
         ]
+
+
+completedQuestsFireAfterBackendMsg : BackendMsg -> Bool
+completedQuestsFireAfterBackendMsg msg =
+    case msg of
+        ClientConnected _ _ ->
+            False
+
+        ClientDisconnected _ _ ->
+            False
+
+
+completedQuestsFireAfterToBackendMsg : ToBackend -> Bool
+completedQuestsFireAfterToBackendMsg msg =
+    case msg of
+        InitQuests ->
+            True
+
+        AddQuestProgress ->
+            True
+
+
+ongoingQuestsFireAfterBackendMsg : BackendMsg -> Bool
+ongoingQuestsFireAfterBackendMsg msg =
+    case msg of
+        ClientConnected _ _ ->
+            False
+
+        ClientDisconnected _ _ ->
+            False
+
+
+ongoingQuestsFireAfterToBackendMsg : ToBackend -> Bool
+ongoingQuestsFireAfterToBackendMsg msg =
+    case msg of
+        InitQuests ->
+            True
+
+        AddQuestProgress ->
+            True
 
 
 

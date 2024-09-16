@@ -41,8 +41,16 @@ update : BackendMsg -> Model -> ( Model, Cmd BackendMsg )
 update msg model =
     case msg of
         ClientConnected _ clientId ->
-            ( { model | clientIds = Set.insert clientId model.clientIds }
-            , Cmd.none
+            let
+                newModel =
+                    { model | clientIds = Set.insert clientId model.clientIds }
+            in
+            ( newModel
+            , Graphqlike.sendSubscriptionData
+                newModel
+                clientId
+                Lamdera.sendToFrontend
+                Queries.subscriptions
             )
 
         ClientDisconnected _ clientId ->

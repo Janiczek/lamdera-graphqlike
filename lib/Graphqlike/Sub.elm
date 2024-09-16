@@ -1,24 +1,43 @@
-module Graphqlike.Sub exposing (Sub, batch, none, query)
+module Graphqlike.Sub exposing
+    ( Sub
+    , batch
+    , none
+    , query
+    )
 
 import Graphqlike.Internal as I
 import Query as Q
 import Query.Error as QE
 
 
-type alias Sub backendModel msg =
-    I.Sub backendModel msg
+type alias Sub backendModel toFrontendMsg toBackendMsg backendMsg =
+    I.Sub backendModel toFrontendMsg toBackendMsg backendMsg
 
 
-none : Sub bm msg
+none : Sub backendModel toFrontendMsg toBackendMsg backendMsg
 none =
     I.Batch []
 
 
-batch : List (Sub bm msg) -> Sub bm msg
+batch : List (Sub backendModel toFrontendMsg toBackendMsg backendMsg) -> Sub backendModel toFrontendMsg toBackendMsg backendMsg
 batch list =
     I.Batch list
 
 
-query : Q.Query bm a -> (Result QE.Error a -> msg) -> Sub bm msg
-query (I.Q info query_) toMsg =
-    I.Query (I.Q info (\clientId backendModel -> Ok (toMsg (query_ clientId backendModel))))
+query :
+    { toToFrontendMsg : Result QE.Error a -> toFrontendMsg
+    , fireAfterBackendMsg : backendMsg -> Bool
+    , fireAfterToBackendMsg : toBackendMsg -> Bool
+    }
+    -> Q.Query backendModel a
+    -> Sub backendModel toFrontendMsg toBackendMsg backendMsg
+query cfg (I.Q info query_) =
+    I.Query
+        { fireAfterBackendMsg = cfg.fireAfterBackendMsg
+        , fireAfterToBackendMsg = cfg.fireAfterToBackendMsg
+        }
+        (I.Q info
+            (\clientId backendModel ->
+                Ok (cfg.toToFrontendMsg (query_ clientId backendModel))
+            )
+        )

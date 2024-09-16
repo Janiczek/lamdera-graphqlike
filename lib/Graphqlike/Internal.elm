@@ -13,6 +13,10 @@ usesClientId (Q info _) =
     info.usesClientId
 
 
-type Sub backendModel msg
-    = Query (Query backendModel msg)
-    | Batch (List (Sub backendModel msg))
+type Sub backendModel toFrontendMsg toBackendMsg backendMsg
+    = Query
+        { fireAfterBackendMsg : backendMsg -> Bool
+        , fireAfterToBackendMsg : toBackendMsg -> Bool
+        }
+        (Query backendModel toFrontendMsg)
+    | Batch (List (Sub backendModel toFrontendMsg toBackendMsg backendMsg))
