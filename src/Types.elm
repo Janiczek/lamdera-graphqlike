@@ -31,7 +31,7 @@ type alias BackendModel =
     , quests : Dict QuestId { name : String, threshold : Int }
     , choices : Dict ChoiceId { name : String }
     , questChoices : Dict QuestId (Set ChoiceId)
-    , choiceProgress : Dict ChoiceId (Dict ClientId Int)
+    , choicePoints : Dict ChoiceId (Dict ClientId Int)
     }
 
 
@@ -90,3 +90,4 @@ type ToBackend
 
 type ToFrontend
     = GotCompletedQuests (Result Query.Error.Error (List CompletedQuest))
+    | GotOngoingQuests (Result Query.Error.Error (List OngoingQuest))

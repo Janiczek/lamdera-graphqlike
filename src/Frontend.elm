@@ -71,6 +71,16 @@ updateFromBackend msg model =
             , Cmd.none
             )
 
+        GotOngoingQuests (Err err) ->
+            ( { model | ongoingQuests = Error err }
+            , Cmd.none
+            )
+
+        GotOngoingQuests (Ok ongoingQuests) ->
+            ( { model | ongoingQuests = Success ongoingQuests }
+            , Cmd.none
+            )
+
 
 view : Model -> Browser.Document FrontendMsg
 view model =

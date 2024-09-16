@@ -4,14 +4,14 @@ module Queries exposing
     , choice
     , choiceClientPoints
     , choiceName
-    , choiceProgress
-    , choiceTotalProgress
+    , choicePoints
+    , choiceTotalPoints
     , choices
     , completedQuest
     , completedQuests
     , quest
     , questBestChoice
-    , questBestChoiceProgress
+    , questBestChoicePoints
     , questChoices
     , questCompleted
     , questName
@@ -31,6 +31,7 @@ import Types
         ( BackendModel
         , ChoiceId
         , CompletedQuest
+        , OngoingQuest
         , QuestId
         , ToFrontend(..)
         )
@@ -54,6 +55,7 @@ subscriptions : Sub
 subscriptions =
     Graphqlike.Sub.batch
         [ Graphqlike.Sub.query completedQuests GotCompletedQuests
+        , Graphqlike.Sub.query ongoingQuests GotOngoingQuests
         ]
 
 
@@ -85,6 +87,50 @@ completedQuest questId =
                             |> Query.andMap (choiceName choiceId)
                             |> Query.andMap (choiceClientPoints choiceId)
                             |> Query.map Just
+            )
+
+
+
+-- ONGOING QUEST
+
+
+ongoingQuests : Query (List OngoingQuest)
+ongoingQuests =
+    quests ongoingQuest
+        |> Query.map (List.filterMap identity)
+
+
+ongoingQuest : QuestId -> Query (Maybe OngoingQuest)
+ongoingQuest questId =
+    questWinningChoice questId
+        |> Query.andThen
+            (\maybeChoiceId ->
+                case maybeChoiceId of
+                    Nothing ->
+                        Query.succeed OngoingQuest
+                            |> Query.andMap (Query.succeed questId)
+                            |> Query.andMap (questName questId)
+                            |> Query.andMap (questThreshold questId)
+                            |> Query.andMap
+                                (questChoices questId
+                                    |> Query.andThen
+                                        (\choiceIds ->
+                                            choiceIds
+                                                |> Set.toList
+                                                |> Query.traverse
+                                                    (\choiceId ->
+                                                        Query.succeed (\id name points myContribution -> { id = id, name = name, points = points, myContribution = myContribution })
+                                                            |> Query.andMap (Query.succeed choiceId)
+                                                            |> Query.andMap (choiceName choiceId)
+                                                            |> Query.andMap (choiceTotalPoints choiceId)
+                                                            |> Query.andMap (choiceClientPoints choiceId)
+                                                    )
+                                        )
+                                )
+                            |> Query.map Just
+
+                    Just choiceId ->
+                        Query.succeed Nothing
             )
 
 
@@ -130,7 +176,7 @@ questBestChoice questId =
                     |> Set.toList
                     |> Query.traverse
                         (\choiceId ->
-                            choiceTotalProgress choiceId
+                            choiceTotalPoints choiceId
                                 |> Query.map (Tuple.pair choiceId)
                         )
                     |> Query.map
@@ -142,17 +188,17 @@ questBestChoice questId =
             )
 
 
-questBestChoiceProgress : QuestId -> Query Int
-questBestChoiceProgress questId =
+questBestChoicePoints : QuestId -> Query Int
+questBestChoicePoints questId =
     questBestChoice questId
         |> Query.map (Maybe.map Tuple.second >> Maybe.withDefault 0)
 
 
 questCompleted : QuestId -> Query Bool
 questCompleted questId =
-    Query.map2 (\threshold progress -> progress >= threshold)
+    Query.map2 (\threshold points -> points >= threshold)
         (questThreshold questId)
-        (questBestChoiceProgress questId)
+        (questBestChoicePoints questId)
 
 
 questName : QuestId -> Query String
@@ -208,23 +254,23 @@ choiceName choiceId =
 
 
 
--- CHOICE PROGRESS
+-- CHOICE POINTS
 
 
-choiceProgress : ChoiceId -> Query (Dict ClientId Int)
-choiceProgress choiceId =
-    Query.toplevel .choiceProgress
+choicePoints : ChoiceId -> Query (Dict ClientId Int)
+choicePoints choiceId =
+    Query.toplevel .choicePoints
         |> Query.andThen (Query.dictGet choiceId)
 
 
-choiceTotalProgress : ChoiceId -> Query Int
-choiceTotalProgress choiceId =
-    choiceProgress choiceId
-        |> Query.map (Dict.foldl (\_ progress acc -> acc + progress) 0)
+choiceTotalPoints : ChoiceId -> Query Int
+choiceTotalPoints choiceId =
+    choicePoints choiceId
+        |> Query.map (Dict.foldl (\_ points acc -> acc + points) 0)
 
 
 choiceClientPoints : ChoiceId -> Query Int
 choiceClientPoints choiceId =
-    Query.andThen2 (\progressDict clientId -> Query.dictGet clientId progressDict)
-        (choiceProgress choiceId)
+    Query.andThen2 (\pointsDict clientId -> Query.dictGet clientId pointsDict)
+        (choicePoints choiceId)
         Query.clientId

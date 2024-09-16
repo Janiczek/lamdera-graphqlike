@@ -31,7 +31,7 @@ init =
       , quests = Dict.empty
       , choices = Dict.empty
       , questChoices = Dict.empty
-      , choiceProgress = Dict.empty
+      , choicePoints = Dict.empty
       }
     , Cmd.none
     )
