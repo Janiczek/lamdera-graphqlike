@@ -225,7 +225,6 @@ withCaching cfg key model toFrontendMsg send =
                 |> Lamdera.Wire3.bytesEncode
                 |> Hex.Convert.toString
                 |> FNV1a.hash
-                |> Debug.log ("current hash for " ++ Debug.toString key)
 
         sendAndSave () =
             Cmd.batch
@@ -235,7 +234,7 @@ withCaching cfg key model toFrontendMsg send =
                     |> Task.perform identity
                 ]
     in
-    case Debug.log ("old hash for " ++ Debug.toString key) <| Dict.get key (cfg.cache model) of
+    case Dict.get key (cfg.cache model) of
         Nothing ->
             -- Not in cache, send and save!
             sendAndSave ()
