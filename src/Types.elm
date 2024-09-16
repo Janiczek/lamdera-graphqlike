@@ -3,7 +3,7 @@ module Types exposing (..)
 import Browser exposing (UrlRequest)
 import Browser.Navigation exposing (Key)
 import Dict exposing (Dict)
-import Lamdera exposing (ClientId)
+import Lamdera exposing (ClientId, SessionId)
 import Query.Error
 import RemoteData exposing (RemoteData)
 import Set exposing (Set)
@@ -27,7 +27,8 @@ type alias ChoiceId =
 
 
 type alias BackendModel =
-    { quests : Dict QuestId { name : String, threshold : Int }
+    { clientIds : Set ClientId
+    , quests : Dict QuestId { name : String, threshold : Int }
     , choices : Dict ChoiceId { name : String }
     , questChoices : Dict QuestId (Set ChoiceId)
     , choiceProgress : Dict ChoiceId (Dict ClientId Int)
@@ -35,7 +36,8 @@ type alias BackendModel =
 
 
 type BackendMsg
-    = NoOpBackendMsg
+    = ClientConnected SessionId ClientId
+    | ClientDisconnected SessionId ClientId
 
 
 

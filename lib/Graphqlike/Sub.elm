@@ -20,5 +20,5 @@ batch list =
 
 
 query : Q.Query bm a -> (Result QE.Error a -> msg) -> Sub bm msg
-query q f =
-    I.Query (\cid bm -> Ok (f (q cid bm)))
+query (I.Q info query_) toMsg =
+    I.Query (I.Q info (\clientId backendModel -> Ok (toMsg (query_ clientId backendModel))))
