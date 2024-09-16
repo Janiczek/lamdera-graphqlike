@@ -15,21 +15,29 @@ subscriptions =
 -- The subscriptions look like this:
 leaderboardSub : DataSub
 leaderboardSub =
-     Graphqlike.Sub.query
-        { toToFrontendMsg = GotLeaderboard
-
-        -- With these you can skip computing the query if you're reasonably sure a msg can't affect it:
-        , fireAfterBackendMsg = \_ -> False
-        , fireAfterToBackendMsg =
-            \msg ->
+    Graphqlike.Sub.query
+        "leaderboard" -- Cache key. We are only sending data to frontend if it has changed from the last time
+        GotLeaderboard -- ToFrontend msg to send data with
+        leaderboard -- The query to run
+        -- The following are optimizations: you can skip computing the query if you're reasonably sure a msg can't affect it
+        |> Graphqlike.Sub.fireOnlyAfterSpecificBackendMsgs
+            (\msg ->
                 case msg of
-                    SendChatMessage _ -> True
-                    _ -> False
+                    ClientConnected _ _ ->
+                        False
 
-        -- We are only sending data to frontend if it has changed from the last time
-        , cacheKey = "leaderboard"
-        }
-        leaderboard
+                    ClientDisconnected _ _ ->
+                        False
+
+                    SaveToGraphqlikeCache _ _ ->
+                        False
+            )
+        |> Graphqlike.Sub.fireOnlyAfterSpecificToBackendMsgs
+            (\msg ->
+                case msg of
+                    Increment ->
+                        True
+            )
 
 -- You can think of queries as `type alias Query a = BackendModel -> a`
 -- (in reality they're more complex: they can fail, they know the current client ID, etc.)
